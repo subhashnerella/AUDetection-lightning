@@ -1,0 +1,28 @@
+#folders
+logs/
+utils/
+
+
+#
+.vscode/
+.neptune/
+.git/
+
+
+#files
+.env
+*.txt
+
+# Jupyter Notebook
+.ipynb_checkpoints
+**/*.ipynb
+
+#weights and checkpoints
+**/*.ckpt
+**/*.pth
+**/*.pt
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
