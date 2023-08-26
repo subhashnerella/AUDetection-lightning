@@ -32,6 +32,12 @@ class MetricLogger(Callback):
         self.val_preds = []
         self.val_dataset = []
 
+        self.dataset_AUs = {'BP4D':['AU1', 'AU2', 'AU4', 'AU6', 'AU7', 'AU9', 'AU10','AU12', 'AU14', 'AU15', 'AU17','AU20', 'AU23', 'AU24', 'AU27'],
+                            'DISFA':['AU1', 'AU2', 'AU4', 'AU5', 'AU6', 'AU9', 'AU12', 'AU15', 'AU17', 'AU20', 'AU25', 'AU26'],
+                            'UNBC':[ 'AU4', 'AU6', 'AU7', 'AU9', 'AU10','AU12', 'AU15', 'AU20', 'AU25','AU26','AU27','AU43'],
+                            'ICU':[ 'AU4', 'AU6', 'AU7', 'AU9', 'AU12',  'AU20', 'AU24', 'AU25','AU26','AU27','AU43'],
+                            'ICUOLD':['AU4', 'AU6', 'AU7', 'AU9', 'AU12',  'AU20', 'AU24', 'AU25','AU26','AU27','AU43']}
+
 
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
         prob = outputs['logits']
@@ -50,38 +56,36 @@ class MetricLogger(Callback):
 
         paths = batch["file_path_"]
         paths = pl_module.all_gather(paths)
-        paths = itertools.chain.from_iterable(paths)
         self.train_paths.extend(paths)
+
 
         dataset = batch["dataset"]
         dataset = pl_module.all_gather(dataset)
-        dataset = itertools.chain.from_iterable(dataset)
         self.train_dataset.extend(dataset)
 
     def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx =0) -> None:
-        prob = outputs['logits']
-        prob = prob.sigmoid()
-        prob = pl_module.all_gather(prob)
-        prob = rearrange(prob, 'p b c -> (p b) c').detach().cpu().numpy()
-        self.val_probs.extend(prob)
+        if not trainer.sanity_checking:
+            prob = outputs['logits']
+            prob = prob.sigmoid()
+            prob = pl_module.all_gather(prob)
+            prob = rearrange(prob, 'p b c -> (p b) c').detach().cpu().numpy()
+            self.val_probs.extend(prob)
 
-        label = batch["aus"]
-        label = pl_module.all_gather(label)
-        label = rearrange(label, 'p b c -> (p b) c').detach().cpu().numpy()
-        self.val_labels.extend(label)
+            label = batch["aus"]
+            label = pl_module.all_gather(label)
+            label = rearrange(label, 'p b c -> (p b) c').detach().cpu().numpy()
+            self.val_labels.extend(label)
 
-        preds = np.where(prob > 0.5, 1, 0)
-        self.val_preds.extend(preds)
+            preds = np.where(prob > 0.5, 1, 0)
+            self.val_preds.extend(preds)
 
-        paths = batch["file_path_"]
-        paths = pl_module.all_gather(paths)
-        paths = itertools.chain.from_iterable(paths)
-        self.val_paths.extend(paths)
+            paths = batch["file_path_"]
+            paths = pl_module.all_gather(paths)
+            self.val_paths.extend(paths)
 
-        dataset = batch["dataset"]
-        dataset = pl_module.all_gather(dataset)
-        dataset = itertools.chain.from_iterable(dataset)
-        self.val_dataset.extend(dataset)
+            dataset = batch["dataset"]
+            dataset = pl_module.all_gather(dataset)
+            self.val_dataset.extend(dataset)
 
         
     def reset(self,split='train'):
@@ -104,9 +108,18 @@ class MetricLogger(Callback):
             else:
                 trainer.logger.log_metrics({split+'/'+str(k): v}, step=trainer.current_epoch)
 
-    def compute_metrics(self, label, preds, AUs):
+    def compute_metrics(self, label, preds, AUs, dataset=None):
         report = defaultdict(dict)
+        if dataset is not None:
+            dataset_aus = self.dataset_AUs[dataset]
         for true,pred,AU in zip(label.T,preds.T,AUs):
+            if dataset is None:
+                true_inds = np.where(true != -1)[0]
+                true = true[true_inds]
+                pred = pred[true_inds]
+            else:
+                if AU not in dataset_aus:
+                    continue
             reports = classification_report(true, pred,output_dict=True,labels=[0,1],zero_division=1)
             try:
                 precision = reports['1']['precision']
@@ -134,7 +147,7 @@ class MetricLogger(Callback):
         if len(datasets) > 1:
             for dataset in datasets:
                 idx = np.where(np.array(self.train_dataset) == dataset)[0]
-                report = self.compute_metrics(np.array(self.train_labels)[idx], np.array(self.train_preds)[idx], pl_module.AUs)
+                report = self.compute_metrics(np.array(self.train_labels)[idx], np.array(self.train_preds)[idx], pl_module.AUs,dataset=dataset)
                 dataset_report[dataset] = report
         return dataset_report
 
@@ -173,11 +186,12 @@ class MetricLogger(Callback):
 
     @rank_zero_only
     def on_validation_epoch_end(self, trainer, pl_module):
-        val_report = self.compute_step(pl_module)
-        self.log_stats(trainer, val_report, split='val')
-        if trainer.current_epoch == trainer.max_epochs-1:
-            self.make_dataframes(trainer,pl_module,pl_module.AUs,split='val')
-        self.reset('val')
+        if not trainer.sanity_checking:
+            val_report = self.compute_step(pl_module)
+            self.log_stats(trainer, val_report, split='val')
+            if trainer.current_epoch == trainer.max_epochs-1:
+                self.make_dataframes(trainer,pl_module,pl_module.AUs,split='val')
+            self.reset('val')
 
     @rank_zero_only
     def on_train_epoch_end(self, trainer: Trainer, pl_module: pl.LightningModule) -> None:
@@ -228,9 +242,9 @@ class SetupCallback(Callback):
 
     
 
-# see https://github.com/SeanNaren/minGPT/blob/master/mingpt/callback.py
-class CUDACallback(Callback):
 
+class CUDACallback(Callback):
+    # modified https://github.com/SeanNaren/minGPT/blob/master/mingpt/callback.py for lightning 2.0.7
     def on_train_epoch_start(self, trainer, pl_module):
         # Reset the memory use counter
         torch.cuda.reset_peak_memory_stats(self.root_gpu(trainer))
@@ -242,8 +256,8 @@ class CUDACallback(Callback):
         max_memory = torch.cuda.max_memory_allocated(self.root_gpu(trainer)) / 2 ** 20
         epoch_time = time.time() - self.start_time
 
-        max_memory = trainer.training_type_plugin.reduce(max_memory)
-        epoch_time = trainer.training_type_plugin.reduce(epoch_time)
+        max_memory = trainer.strategy.reduce(max_memory)
+        epoch_time = trainer.strategy.reduce(epoch_time)
 
         rank_zero_info(f"Average Epoch time: {epoch_time:.2f} seconds")
         rank_zero_info(f"Average Peak memory {max_memory:.2f}MiB")

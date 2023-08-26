@@ -31,5 +31,5 @@ lightning:
     benchmark: True
     strategy: ddp
     accelerator: gpu
-    devices: 0,
+    devices: 0,1
 
