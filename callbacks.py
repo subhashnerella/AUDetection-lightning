@@ -197,9 +197,7 @@ class MetricLogger(Callback):
         #     self.make_dataframes(trainer,pl_module,pl_module.AUs,split='train')   
         self.reset('train')
         
-    @rank_zero_only
-    def on_fit_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
-        pl_module.logger.experiment[f'checkpoints/last.ckpt'].upload(os.path.join(self.logdir,'checkpoints','last.ckpt'))
+
 
 class SetupCallback(Callback):
     def __init__(self, resume, now, logdir, ckptdir, cfgdir, config, lightning_config):

@@ -161,7 +161,7 @@ def main():
                 "filename": "{epoch:06}",
                 "verbose": True,
                 "save_last": True,
-                "save_top_k": 2,
+                "save_top_k": 1,
                 "monitor": "val/loss",
             }
         }
