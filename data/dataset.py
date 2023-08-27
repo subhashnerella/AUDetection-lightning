@@ -15,7 +15,6 @@ class FacesBase(Dataset):
         raise NotImplementedError
 
     def __len__(self):
-        return 1280
         return len(self.data)
 
     def __getitem__(self, idx):
@@ -208,6 +207,7 @@ def helper_AU_func(df:pd.DataFrame,aus:list)->pd.DataFrame:
     # Add absent AUs fillled with -1
     for au in absent_aus:
         au_df[au] = -1
+    au_df = au_df[aus]
     return au_df
         
 def helper_split_func(df:pd.DataFrame,split:str = 'train')->pd.DataFrame:

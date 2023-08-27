@@ -22,21 +22,21 @@ class MetricLogger(Callback):
         self.logdir = logdir
         self.train_probs = []
         self.train_labels = []
-        self.train_paths = []
         self.train_preds = []
-        self.train_dataset = []
+        # self.train_paths = []
+        # self.train_dataset = []
 
         self.val_probs = []
         self.val_labels = []
-        self.val_paths = []
         self.val_preds = []
-        self.val_dataset = []
+        # self.val_paths = []
+        # self.val_dataset = []
 
-        self.dataset_AUs = {'BP4D':['AU1', 'AU2', 'AU4', 'AU6', 'AU7', 'AU9', 'AU10','AU12', 'AU14', 'AU15', 'AU17','AU20', 'AU23', 'AU24', 'AU27'],
-                            'DISFA':['AU1', 'AU2', 'AU4', 'AU5', 'AU6', 'AU9', 'AU12', 'AU15', 'AU17', 'AU20', 'AU25', 'AU26'],
-                            'UNBC':[ 'AU4', 'AU6', 'AU7', 'AU9', 'AU10','AU12', 'AU15', 'AU20', 'AU25','AU26','AU27','AU43'],
-                            'ICU':[ 'AU4', 'AU6', 'AU7', 'AU9', 'AU12',  'AU20', 'AU24', 'AU25','AU26','AU27','AU43'],
-                            'ICUOLD':['AU4', 'AU6', 'AU7', 'AU9', 'AU12',  'AU20', 'AU24', 'AU25','AU26','AU27','AU43']}
+        # self.dataset_AUs = {'BP4D':['AU1', 'AU2', 'AU4', 'AU6', 'AU7', 'AU9', 'AU10','AU12', 'AU14', 'AU15', 'AU17','AU20', 'AU23', 'AU24', 'AU27'],
+        #                     'DISFA':['AU1', 'AU2', 'AU4', 'AU5', 'AU6', 'AU9', 'AU12', 'AU15', 'AU17', 'AU20', 'AU25', 'AU26'],
+        #                     'UNBC':[ 'AU4', 'AU6', 'AU7', 'AU9', 'AU10','AU12', 'AU15', 'AU20', 'AU25','AU26','AU27','AU43'],
+        #                     'ICU':[ 'AU4', 'AU6', 'AU7', 'AU9', 'AU12',  'AU20', 'AU24', 'AU25','AU26','AU27','AU43'],
+        #                     'ICUOLD':['AU4', 'AU6', 'AU7', 'AU9', 'AU12',  'AU20', 'AU24', 'AU25','AU26','AU27','AU43']}
 
 
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
@@ -54,14 +54,13 @@ class MetricLogger(Callback):
         preds = np.where(prob > 0.5, 1, 0)
         self.train_preds.extend(preds)
 
-        paths = batch["file_path_"]
-        paths = pl_module.all_gather(paths)
-        self.train_paths.extend(paths)
+        # paths = batch["file_path_"]
+        # paths = pl_module.all_gather(paths)
+        # self.train_paths.extend(paths)
 
-
-        dataset = batch["dataset"]
-        dataset = pl_module.all_gather(dataset)
-        self.train_dataset.extend(dataset)
+        # dataset = batch["dataset"]
+        # dataset = pl_module.all_gather_object(dataset)
+        # self.train_dataset.extend(dataset)
 
     def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx =0) -> None:
         if not trainer.sanity_checking:
@@ -79,26 +78,26 @@ class MetricLogger(Callback):
             preds = np.where(prob > 0.5, 1, 0)
             self.val_preds.extend(preds)
 
-            paths = batch["file_path_"]
-            paths = pl_module.all_gather(paths)
-            self.val_paths.extend(paths)
+            # paths = batch["file_path_"]
+            # paths = pl_module.all_gather(paths)
+            # self.val_paths.extend(paths)
 
-            dataset = batch["dataset"]
-            dataset = pl_module.all_gather(dataset)
-            self.val_dataset.extend(dataset)
+            # dataset = batch["dataset"]
+            # dataset = pl_module.all_gather(dataset)
+            # self.val_dataset.extend(dataset)
 
         
     def reset(self,split='train'):
         if split == 'train':
             self.train_probs = []
             self.train_labels = []
-            self.train_paths = []
             self.train_preds = []
+            self.train_paths = []
         else:
             self.val_probs = []
             self.val_labels = []
-            self.val_paths = []
             self.val_preds = []
+            self.val_paths = []
 
 
     def log_stats(self, trainer, stats, split='train'):
@@ -108,18 +107,15 @@ class MetricLogger(Callback):
             else:
                 trainer.logger.log_metrics({split+'/'+str(k): v}, step=trainer.current_epoch)
 
-    def compute_metrics(self, label, preds, AUs, dataset=None):
+    def compute_metrics(self, label, preds, AUs):
         report = defaultdict(dict)
-        if dataset is not None:
-            dataset_aus = self.dataset_AUs[dataset]
+
         for true,pred,AU in zip(label.T,preds.T,AUs):
-            if dataset is None:
-                true_inds = np.where(true != -1)[0]
-                true = true[true_inds]
-                pred = pred[true_inds]
-            else:
-                if AU not in dataset_aus:
-                    continue
+
+            true_inds = np.where(true != -1)[0]
+            true = true[true_inds]
+            pred = pred[true_inds]
+
             reports = classification_report(true, pred,output_dict=True,labels=[0,1],zero_division=1)
             try:
                 precision = reports['1']['precision']
@@ -140,16 +136,16 @@ class MetricLogger(Callback):
         return report
 
     def compute_step(self,  pl_module):
-        dataset_report = defaultdict(dict)
+        #dataset_report = defaultdict(dict)
         report = self.compute_metrics(np.array(self.train_labels), np.array(self.train_preds), pl_module.AUs)
-        dataset_report['all'] = report
-        datasets = np.unique(self.train_dataset)
-        if len(datasets) > 1:
-            for dataset in datasets:
-                idx = np.where(np.array(self.train_dataset) == dataset)[0]
-                report = self.compute_metrics(np.array(self.train_labels)[idx], np.array(self.train_preds)[idx], pl_module.AUs,dataset=dataset)
-                dataset_report[dataset] = report
-        return dataset_report
+        # dataset_report['all'] = report
+        # datasets = np.unique(self.train_dataset)
+        # if len(datasets) > 1:
+        #     for dataset in datasets:
+        #         idx = np.where(np.array(self.train_dataset) == dataset)[0]
+        #         report = self.compute_metrics(np.array(self.train_labels)[idx], np.array(self.train_preds)[idx], pl_module.AUs,dataset=dataset)
+        #         dataset_report[dataset] = report
+        return report
 
     def make_dataframes(self,trainer,pl_module,aus,split='train'):
         if split == 'train':
@@ -189,16 +185,16 @@ class MetricLogger(Callback):
         if not trainer.sanity_checking:
             val_report = self.compute_step(pl_module)
             self.log_stats(trainer, val_report, split='val')
-            if trainer.current_epoch == trainer.max_epochs-1:
-                self.make_dataframes(trainer,pl_module,pl_module.AUs,split='val')
+            # if trainer.current_epoch == trainer.max_epochs-1:
+            #     self.make_dataframes(trainer,pl_module,pl_module.AUs,split='val')
             self.reset('val')
 
     @rank_zero_only
     def on_train_epoch_end(self, trainer: Trainer, pl_module: pl.LightningModule) -> None:
         train_report = self.compute_step(pl_module)
         self.log_stats(trainer, train_report, split='train')
-        if trainer.current_epoch == trainer.max_epochs-1:
-            self.make_dataframes(trainer,pl_module,pl_module.AUs,split='train')   
+        # if trainer.current_epoch == trainer.max_epochs-1:
+        #     self.make_dataframes(trainer,pl_module,pl_module.AUs,split='train')   
         self.reset('train')
         
     @rank_zero_only
@@ -222,6 +218,7 @@ class SetupCallback(Callback):
             print("Summoning checkpoint.")
             ckpt_path = os.path.join(self.ckptdir, "last.ckpt")
             trainer.save_checkpoint(ckpt_path) 
+            pl_module.logger.experiment[f'checkpoints/last.ckpt'].upload(os.path.join(self.logdir,'checkpoints','last.ckpt'))
 
     def on_fit_start(self, trainer, pl_module):
         if trainer.global_rank == 0:

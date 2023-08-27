@@ -27,7 +27,7 @@ data:
 
 lightning:
   trainer:
-    max_epochs: 10
+    max_epochs: 3
     benchmark: True
     strategy: ddp
     accelerator: gpu
