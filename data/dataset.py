@@ -72,6 +72,19 @@ class ICUVal(FacesBase):
         labels={'aus':au_labels , 'dataset':'ICU'}
         self.data = ImagePaths(paths,landmark_paths,aus,labels,size,mcManager)
 
+class ICUTest(FacesBase):
+    def __init__(self,aus,size=225, mcManager=None):
+        super().__init__()
+        df = pd.read_csv(os.path.join('data/datafiles/icu.csv'))
+        df['path'] = df['path'].str.replace('Sampled_Images','extracted_frames')
+        df = helper_icu_split_func(df,split='test')
+        paths = df['path'].values
+        landmark_paths = [None]*len(paths)
+        aus_df = helper_AU_func(df,aus)
+        au_labels = aus_df[aus].to_numpy()
+        labels={'aus':au_labels , 'dataset':'ICU'}
+        self.data = ImagePaths(paths,landmark_paths,aus,labels,size,mcManager)
+
 class BP4DTrain(FacesBase):
     def __init__(self,aus,size=225,mcManager=None):
         super().__init__()

@@ -14,6 +14,7 @@ import pandas as pd
 import itertools
 from collections import defaultdict
 from sklearn.metrics import classification_report
+from functools import partial
 import os
 
 class MetricLogger(Callback):
@@ -109,7 +110,7 @@ class MetricLogger(Callback):
 
     def compute_metrics(self, label, preds, AUs):
         report = defaultdict(dict)
-
+        roundn = partial(round,digits=2)
         for true,pred,AU in zip(label.T,preds.T,AUs):
 
             true_inds = np.where(true != -1)[0]
@@ -125,19 +126,28 @@ class MetricLogger(Callback):
                 f1score = reports['1']['f1-score']
                 support = reports['1']['support']
 
-                report["f1"][AU] = f1score
-                report["precision"][AU] = precision
-                report["acc"][AU] = accuracy
-                report["recall"][AU] = recall
-                report["specificity"][AU] = specificity
+                report["f1"][AU] = roundn(f1score)
+                report["precision"][AU] = roundn(precision)
+                report["acc"][AU] = roundn(accuracy)
+                report["recall"][AU] = roundn(recall)
+                report["specificity"][AU] = roundn(specificity)
                 report['support'][AU] = support
             except:
                 pass    
+        for key in list(report.keys()):
+            if key != 'support':
+                report[key]['Mean'] = roundn(np.mean([v for k,v in report[key].items()]))
+
         return report
 
-    def compute_step(self,  pl_module):
+    def compute_step(self,  pl_module, split='train'):
         #dataset_report = defaultdict(dict)
-        report = self.compute_metrics(np.array(self.train_labels), np.array(self.train_preds), pl_module.AUs)
+        if split == 'train':
+            report = self.compute_metrics(np.array(self.train_labels), np.array(self.train_preds), pl_module.AUs)
+        elif split == 'val':
+            report = self.compute_metrics(np.array(self.val_labels), np.array(self.val_preds), pl_module.AUs)
+        else:
+            raise ValueError(f"Split {split} not recognized.")
         # dataset_report['all'] = report
         # datasets = np.unique(self.train_dataset)
         # if len(datasets) > 1:
@@ -183,7 +193,7 @@ class MetricLogger(Callback):
     @rank_zero_only
     def on_validation_epoch_end(self, trainer, pl_module):
         if not trainer.sanity_checking:
-            val_report = self.compute_step(pl_module)
+            val_report = self.compute_step(pl_module,split='val')
             self.log_stats(trainer, val_report, split='val')
             # if trainer.current_epoch == trainer.max_epochs-1:
             #     self.make_dataframes(trainer,pl_module,pl_module.AUs,split='val')
@@ -191,7 +201,7 @@ class MetricLogger(Callback):
 
     @rank_zero_only
     def on_train_epoch_end(self, trainer: Trainer, pl_module: pl.LightningModule) -> None:
-        train_report = self.compute_step(pl_module)
+        train_report = self.compute_step(pl_module,split='train')
         self.log_stats(trainer, train_report, split='train')
         # if trainer.current_epoch == trainer.max_epochs-1:
         #     self.make_dataframes(trainer,pl_module,pl_module.AUs,split='train')   

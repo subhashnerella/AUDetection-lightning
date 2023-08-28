@@ -53,12 +53,12 @@ class SwinModel(LightningModule):
 
     def training_step(self, batch, batch_idx):
         loss,outputs = self.common_step(batch, batch_idx)
-        self.log('train/loss', loss)
+        self.log('train/loss', loss,sync_dist=True,prog_bar=True)
         return {'loss':loss,'logits':outputs}
     
     def validation_step(self, batch, batch_idx):
         loss,outputs = self.common_step(batch, batch_idx)
-        self.log('val/loss', loss)
+        self.log('val/loss', loss,sync_dist=True,prog_bar=True)
         return {'loss':loss,'logits':outputs}
     
     def configure_optimizers(self):

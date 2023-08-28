@@ -70,10 +70,11 @@ class ImagePaths(Dataset):
         #sample["image"],sample['landmarks'] = self.preprocess_image(self.keys["file_path_"][i],self.keys["landmark_path_"][i])
         sample["image"] = self.preprocess_image(self.keys["file_path_"][i],self.keys["landmark_path_"][i])
         for k in self.keys:
-            if k=='landmark_path_':
+            if k=='landmark_path_' or k=='file_path_':
                 pass
             elif k == "dataset":
-                sample[k] = self.keys[k]
+                #sample[k] = self.keys[k]
+                pass
             else:
                 sample[k] = self.keys[k][i]
         return sample
