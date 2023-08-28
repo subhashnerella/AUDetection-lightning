@@ -1,5 +1,5 @@
 import time
-
+import json
 from lightning.pytorch.core import LightningModule
 from lightning.pytorch.utilities.rank_zero import rank_zero_only,rank_zero_info
 from lightning.pytorch.callbacks import ModelCheckpoint, Callback, LearningRateMonitor
@@ -32,6 +32,10 @@ class MetricLogger(Callback):
         self.val_preds = []
         # self.val_paths = []
         # self.val_dataset = []
+
+        self.test_probs = []
+        self.test_labels = []
+        self.test_preds = []
 
         # self.dataset_AUs = {'BP4D':['AU1', 'AU2', 'AU4', 'AU6', 'AU7', 'AU9', 'AU10','AU12', 'AU14', 'AU15', 'AU17','AU20', 'AU23', 'AU24', 'AU27'],
         #                     'DISFA':['AU1', 'AU2', 'AU4', 'AU5', 'AU6', 'AU9', 'AU12', 'AU15', 'AU17', 'AU20', 'AU25', 'AU26'],
@@ -87,6 +91,21 @@ class MetricLogger(Callback):
             # dataset = pl_module.all_gather(dataset)
             # self.val_dataset.extend(dataset)
 
+    def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx =0) -> None:
+        prob = outputs['logits']
+        prob = prob.sigmoid()
+        prob = pl_module.all_gather(prob)
+        prob = rearrange(prob, 'p b c -> (p b) c').detach().cpu().numpy()
+        self.test_probs.extend(prob)
+
+        label = batch["aus"]
+        label = pl_module.all_gather(label)
+        label = rearrange(label, 'p b c -> (p b) c').detach().cpu().numpy()
+        self.test_labels.extend(label)
+
+        preds = np.where(prob > 0.5, 1, 0)
+        self.test_preds.extend(preds)
+
         
     def reset(self,split='train'):
         if split == 'train':
@@ -110,7 +129,7 @@ class MetricLogger(Callback):
 
     def compute_metrics(self, label, preds, AUs):
         report = defaultdict(dict)
-        roundn = partial(round,digits=2)
+        roundn = partial(round,ndigits=2)
         for true,pred,AU in zip(label.T,preds.T,AUs):
 
             true_inds = np.where(true != -1)[0]
@@ -146,6 +165,8 @@ class MetricLogger(Callback):
             report = self.compute_metrics(np.array(self.train_labels), np.array(self.train_preds), pl_module.AUs)
         elif split == 'val':
             report = self.compute_metrics(np.array(self.val_labels), np.array(self.val_preds), pl_module.AUs)
+        elif split == 'test':
+            report = self.compute_metrics(np.array(self.test_labels), np.array(self.test_preds), pl_module.AUs)
         else:
             raise ValueError(f"Split {split} not recognized.")
         # dataset_report['all'] = report
@@ -155,6 +176,12 @@ class MetricLogger(Callback):
         #         idx = np.where(np.array(self.train_dataset) == dataset)[0]
         #         report = self.compute_metrics(np.array(self.train_labels)[idx], np.array(self.train_preds)[idx], pl_module.AUs,dataset=dataset)
         #         dataset_report[dataset] = report
+        #save report as json
+        epoch = str(pl_module.trainer.current_epoch).zfill(3)
+        path = os.path.join(self.logdir,'reports',epoch)
+        os.makedirs(path,exist_ok=True)
+        with open(os.path.join(path,f'{split}.json'),'w') as f:
+            json.dump(report,f)
         return report
 
     def make_dataframes(self,trainer,pl_module,aus,split='train'):
@@ -206,6 +233,14 @@ class MetricLogger(Callback):
         # if trainer.current_epoch == trainer.max_epochs-1:
         #     self.make_dataframes(trainer,pl_module,pl_module.AUs,split='train')   
         self.reset('train')
+    
+    @rank_zero_only
+    def on_test_epoch_end(self, trainer: Trainer, pl_module: pl.LightningModule) -> None:
+        test_report = self.compute_step(pl_module,split='test')
+        self.log_stats(trainer, test_report, split='test')
+        # if trainer.current_epoch == trainer.max_epochs-1:
+        #     self.make_dataframes(trainer,pl_module,pl_module.AUs,split='test')   
+        self.reset('test')
         
 
 

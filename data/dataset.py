@@ -21,6 +21,7 @@ class FacesBase(Dataset):
         sample = self.data[idx]
         return sample
 
+# ICUOLD##############################################################################################
 class ICUTrainOLD(FacesBase):
     def __init__(self,aus,size=225, mcManager=None):
         super().__init__()
@@ -46,6 +47,7 @@ class ICUValOLD(FacesBase):
         labels={'aus':au_labels,'dataset':'ICUOLD' }
         self.data = ImagePaths(paths,landmark_paths,aus,labels,size,mcManager)
 
+# ICU##############################################################################################
 class ICUTrain(FacesBase):
     def __init__(self,aus,size=225, mcManager=None):
         super().__init__()
@@ -85,6 +87,7 @@ class ICUTest(FacesBase):
         labels={'aus':au_labels , 'dataset':'ICU'}
         self.data = ImagePaths(paths,landmark_paths,aus,labels,size,mcManager)
 
+# BP4D##############################################################################################
 class BP4DTrain(FacesBase):
     def __init__(self,aus,size=225,mcManager=None):
         super().__init__()
@@ -113,6 +116,7 @@ class BP4DVal(FacesBase):
         labels={'aus':au_labels , 'dataset':'BP4D'}
         self.data = ImagePaths(paths,landmark_paths,aus,labels,size,mcManager)
 
+# DISFA##############################################################################################
 class DISFATrain(FacesBase):
     def __init__(self,aus,size=225,mcManager=None):
         super().__init__(size)
@@ -142,6 +146,7 @@ class DISFAVal(FacesBase):
         labels={'aus':au_labels, 'dataset':'DISFA' }
         self.data = ImagePaths(paths,landmark_paths,aus,labels,size,mcManager)
 
+# UNBC##############################################################################################
 class UNBCTrain(FacesBase):
     def __init__(self, aus,size=225, mcManager=None):
         super().__init__(size)
@@ -171,6 +176,7 @@ class UNBCVal(FacesBase):
         self.data = ImagePaths(paths,landmark_paths,aus,labels,size,mcManager)
 
 
+# MultiDataset##############################################################################################
 class MultiDatasetTrain(Dataset):
     def __init__(self, datasets,aus, size=225,mcManager=None):
         dataset_classes = {'BP4D': BP4DTrain,
