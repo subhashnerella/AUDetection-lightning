@@ -1,0 +1,27 @@
+model:
+  target: model.SwinModel
+  params: 
+    aus: ['AU1', 'AU2', 'AU4', 'AU6', 'AU7', 'AU9', 'AU10','AU12', 'AU14', 'AU15', 'AU17','AU20', 'AU23', 'AU24', 'AU25','AU26','AU27','AU43']
+    variant: base
+    lr: 0.0001
+    loss_reduction: none
+    ckpt_path: 'logs/2023-08-27T11-15-15_first/checkpoints/last.ckpt'
+data:
+  target: main.DataConfig
+  params:
+    batch_size: 1
+    num_workers: 0
+    predict:
+      target: data.predict_dataset.ICUPredict
+      params:
+        data_sources: ['/data/datasets/I2CU_processedFaceVideos/', /data/datasets/PAIN_processedFaceVideos/]
+        aus: ['AU1', 'AU2', 'AU4', 'AU6', 'AU7', 'AU9', 'AU10','AU12', 'AU14', 'AU15', 'AU17','AU20', 'AU23', 'AU24', 'AU25','AU26','AU27','AU43']
+        size: 224
+
+
+
+trainer:
+  strategy: ddp
+  accelerator: gpu
+  devices: 0,
+

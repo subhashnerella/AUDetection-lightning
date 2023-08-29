@@ -61,6 +61,22 @@ class SwinModel(LightningModule):
         self.log('val/loss', loss,sync_dist=True,prog_bar=True)
         return {'loss':loss,'logits':outputs}
     
+    def test_step(self, batch, batch_idx):
+        loss,outputs = self.common_step(batch, batch_idx)
+        self.log('test/loss', loss,sync_dist=True,prog_bar=True)
+        return {'loss':loss,'logits':outputs}
+    
+    def predict_step(self, batch, batch_idx, dataloader_idx=None):
+        x = batch['image']
+        if not x:
+            return None
+        if len(x.shape) == 3:
+            x = x[..., None]
+        x = rearrange(x, 'b h w c -> b c h w')
+        x = x.to(memory_format=torch.contiguous_format).float()
+        outputs = self(x)
+        return outputs
+
     def configure_optimizers(self):
         lr = self.learning_rate
         optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)

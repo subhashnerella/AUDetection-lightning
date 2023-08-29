@@ -31,6 +31,8 @@ class ImagePaths(Dataset):
         self.size = size
         self.keys = dict() if keys is None else keys
         self.keys["file_path_"] = paths
+        if landmark_paths is None:
+            landmark_paths = [None] * len(paths)
         self.keys["landmark_path_"] = landmark_paths
         self._length = len(paths)
         self.aus = list(aus)
@@ -54,10 +56,12 @@ class ImagePaths(Dataset):
         if landmark_path is not None:
             landmarks = np.load(landmark_path)
         else:
-            _,landmarks = detect_faces(image)
-            assert len(landmarks) !=0 , f'No face detected in {image_path}'
-            landmarks = landmarks[0].reshape((-1,2),order='F')
-            
+            try:
+                _,landmarks = detect_faces(image)
+                #assert len(landmarks) !=0 , f'No face detected in {image_path}'
+                landmarks = landmarks[0].reshape((-1,2),order='F')
+            except Exception:
+                return None
 
         image = np.array(image).astype(np.uint8)
         image = self._aligner(image,landmarks=landmarks,image_path=image_path)

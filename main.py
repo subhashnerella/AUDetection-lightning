@@ -54,6 +54,7 @@ def arg_parser():
                         default=23,
                         help="seed for seed_everything",
                         )  
+
     return parser
 
 def instantiate_from_config(config):
@@ -75,13 +76,10 @@ def get_obj_from_str(string, reload=False):
 
 
 class DataConfig(LightningDataModule):
-    def __init__(self,batch_size,train=None, validation=None, test=None,
+    def __init__(self,batch_size,train=None, validation=None, test=None,predict=None,
                  num_workers=None ):
         super().__init__()
         self.batch_size = batch_size
-        self.train = train
-        self.validation = validation
-        self.test = test
         self.num_workers = num_workers if num_workers is not None else 8
         self.dataset_configs = dict()
         if train is not None:
@@ -92,7 +90,10 @@ class DataConfig(LightningDataModule):
             self.val_dataloader = self.get_validation_dataloader
         if test is not None:
             self.dataset_configs["test"] = test        
-            self.test_dataloader = self.get_test_dataloader                                                                                                              
+            self.test_dataloader = self.get_test_dataloader     
+        if predict is not None:
+            self.dataset_configs["predict"] = predict
+            self.predict_dataloader = self.get_predict_dataloader                                                                                                         
 
 
     def prepare_data(self):
@@ -119,6 +120,11 @@ class DataConfig(LightningDataModule):
         test_loader = DataLoader(self.datasets["test"], batch_size=self.batch_size,
                                  shuffle=False, num_workers=self.num_workers)
         return test_loader
+    
+    def get_predict_dataloader(self):
+        predict_loader = DataLoader(self.datasets["predict"], batch_size=self.batch_size,
+                                    shuffle=False, num_workers=self.num_workers)
+        return predict_loader
 
 
 def main():
@@ -147,7 +153,6 @@ def main():
 
         model = instantiate_from_config(config.model)
         data = instantiate_from_config(config.data)
-        #data.setup()
 
         trainer_kwargs = dict()
 

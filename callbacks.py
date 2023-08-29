@@ -221,7 +221,8 @@ class MetricLogger(Callback):
     def on_validation_epoch_end(self, trainer, pl_module):
         if not trainer.sanity_checking:
             val_report = self.compute_step(pl_module,split='val')
-            self.log_stats(trainer, val_report, split='val')
+            epoch = 'epoch'+str(trainer.current_epoch).zfill(3)
+            self.log_stats(trainer, val_report, split=f'val/{epoch}')
             # if trainer.current_epoch == trainer.max_epochs-1:
             #     self.make_dataframes(trainer,pl_module,pl_module.AUs,split='val')
             self.reset('val')
@@ -229,7 +230,8 @@ class MetricLogger(Callback):
     @rank_zero_only
     def on_train_epoch_end(self, trainer: Trainer, pl_module: pl.LightningModule) -> None:
         train_report = self.compute_step(pl_module,split='train')
-        self.log_stats(trainer, train_report, split='train')
+        epoch = 'epoch'+str(trainer.current_epoch).zfill(3)
+        self.log_stats(trainer, train_report, split=f'train/{epoch}')
         # if trainer.current_epoch == trainer.max_epochs-1:
         #     self.make_dataframes(trainer,pl_module,pl_module.AUs,split='train')   
         self.reset('train')

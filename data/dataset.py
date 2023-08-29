@@ -55,7 +55,7 @@ class ICUTrain(FacesBase):
         df['path'] = df['path'].str.replace('Sampled_Images','extracted_frames')
         df = helper_icu_split_func(df)
         paths = df['path'].values
-        landmark_paths = [None]*len(paths)
+        landmark_paths = None
         aus_df = helper_AU_func(df,aus)
         au_labels = aus_df[aus].to_numpy()
         labels={'aus':au_labels , 'dataset':'ICU'}
@@ -68,7 +68,7 @@ class ICUVal(FacesBase):
         df['path'] = df['path'].str.replace('Sampled_Images','extracted_frames')
         df = helper_icu_split_func(df,split='val')
         paths = df['path'].values
-        landmark_paths = [None]*len(paths)
+        landmark_paths = None
         aus_df = helper_AU_func(df,aus)
         au_labels = aus_df[aus].to_numpy()
         labels={'aus':au_labels , 'dataset':'ICU'}
