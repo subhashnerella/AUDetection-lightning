@@ -5,7 +5,7 @@ model:
     variant: base
     lr: 0.0001
     loss_reduction: none
-    ckpt_path: 'logs/2023-08-27T11-15-15_first/checkpoints/last.ckpt'
+    ckpt_path: 'logs/2023-08-29T11-42-12_second/checkpoints/epoch=000001.ckpt'
 data:
   target: main.DataConfig
   params:
