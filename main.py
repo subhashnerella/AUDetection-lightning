@@ -237,7 +237,7 @@ def main():
         trainer = Trainer(**trainer_config, **trainer_kwargs)
         trainer.fit(model, data)
 
-        trainer.test(ckpt_path=trainer.checkpoint_callback.best_model_path)
+        trainer.test(datamodule=data,ckpt_path=trainer.checkpoint_callback.best_model_path)
 
     except Exception as e:
         print(e)

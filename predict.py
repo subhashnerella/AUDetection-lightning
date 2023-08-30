@@ -3,6 +3,7 @@ from main import instantiate_from_config
 import argparse
 from omegaconf import OmegaConf
 from lightning.pytorch import Trainer
+import glob
 
 def arg_parser():
     parser = argparse.ArgumentParser('CNN: AU detector', add_help=False)
@@ -27,6 +28,12 @@ def main():
     config = OmegaConf.merge(*configs)
 
     model = instantiate_from_config(config.model)
+    data_sources = config.data.datasources
+
+    file_paths = []
+    for data_source in data_sources:
+        paths = glob.glob(data_source+'*/*/extracted_frames/*.jpg')
+        file_paths.extend(paths)
     model.eval()
     #paths = 
     
