@@ -36,8 +36,7 @@ class ImagePaths(Dataset):
         self.keys["landmark_path_"] = landmark_paths
         self._length = len(paths)
         self.aus = list(aus)
-        if mcManager:
-            mcManager = MCManager()
+        mcManager = MCManager() if mcManager else None
         self._aligner = FaceAlign(size,mcManager=mcManager)
 
         if self.size is not None and self.size > 0:
@@ -93,7 +92,7 @@ class FaceAlign():
 
     def __call__(self, img, landmarks,image_path):
         key = image_path
-        if self.mcManager is not None and key  in self.mcManager:
+        if self.mcManager is not None and key in self.mcManager:
             result = self.mcManager.get(key)
             mat = np.array(result['affine_mat'])
             aligned_img = cv2.warpAffine(img, mat[0:2, :], (self.size, self.size), cv2.INTER_LINEAR, borderValue=(128, 128, 128))
