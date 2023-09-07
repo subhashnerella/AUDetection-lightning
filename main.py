@@ -5,6 +5,7 @@ from typing import Any, Optional
 from omegaconf import OmegaConf
 import sys
 import os
+import glob
 from dotenv import load_dotenv
 
 from torch.utils.data import DataLoader,DistributedSampler
@@ -20,7 +21,7 @@ from lightning.pytorch.core import LightningDataModule
 from callbacks import MetricLogger, SetupCallback, ModelCheckpoint, CUDACallback
 
 def arg_parser():
-    parser = argparse.ArgumentParser('CNN: AU detector', add_help=False)
+    parser = argparse.ArgumentParser('SWIN: AU detector', add_help=False)
 
     parser.add_argument(
                         "-b",
@@ -133,7 +134,22 @@ def main():
     parser = arg_parser()
     opt = parser.parse_args()
     if opt.resume:
-        pass
+        if not os.path.exists(opt.resume):
+            raise ValueError("Cannot find {}".format(opt.resume))
+        if os.path.isfile(opt.resume):
+            paths = opt.resume.split("/")
+            logdir = "/".join(paths[:-2])
+            ckpt = opt.resume
+        else:
+            assert os.path.isdir(opt.resume), opt.resume
+            logdir = opt.resume.rstrip("/")
+            ckpt = os.path.join(logdir, "checkpoints", "last.ckpt")
+
+        opt.resume_from_checkpoint = ckpt
+        base_configs = sorted(glob.glob(os.path.join(logdir, "configs/*.yaml")))
+        opt.base = base_configs + opt.base
+        _tmp = logdir.split("/")
+        nowname = _tmp[-1]
     else:
         cfg_fname = os.path.split(opt.base[0])[-1]
         cfg_name = cfg_fname.split('.')[0]
@@ -225,6 +241,8 @@ def main():
                                 "params": {
                                         "api_key": os.getenv('NEPTUNE_API_KEY'),
                                         "project": 'AUdetection',
+                                        "name": nowname,
+                                        "log_model_checkpoints":False,
                         }}
                         
         }
