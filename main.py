@@ -17,6 +17,7 @@ from lightning.pytorch import Trainer
 from lightning.pytorch.loggers import TensorBoardLogger
 
 import neptune
+from neptune import Run
 
 from lightning.pytorch.core import LightningDataModule
 
@@ -224,7 +225,7 @@ def main():
         run = None
         if lightning_config.logger == "neptune" and opt.resume:
             id = lightning_config.logger_id
-            run = neptune.init_run(project='AUdetection',name=nowname,with_id=id)
+            run = Run(project='AUdetection',name=nowname,with_id=id,api_token=os.getenv('NEPTUNE_API_KEY'))
         
         default_logger_cfgs = {
                         "tensorboard": {
