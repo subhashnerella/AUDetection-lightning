@@ -1,5 +1,7 @@
 import time
 import json
+from omegaconf import OmegaConf
+
 from lightning.pytorch.core import LightningModule
 from lightning.pytorch.utilities.rank_zero import rank_zero_only,rank_zero_info
 from lightning.pytorch.callbacks import ModelCheckpoint, Callback, LearningRateMonitor
@@ -271,6 +273,13 @@ class SetupCallback(Callback):
             os.makedirs(self.logdir, exist_ok=True)
             os.makedirs(self.ckptdir, exist_ok=True)
             os.makedirs(self.cfgdir, exist_ok=True)
+
+            OmegaConf.save(self.config,
+                os.path.join(self.cfgdir, "{}-project.yaml".format(self.now)))
+    
+            self.lightning_config.logger_id = pl_module.logger._run_short_id
+            OmegaConf.save(OmegaConf.create({"lightning": self.lightning_config}),
+                           os.path.join(self.cfgdir, "{}-lightning.yaml".format(self.now)))
 
         else:
             if not self.resume and os.path.exists(self.logdir):

@@ -67,12 +67,12 @@ class BP4D(FacesBase):
     def __init__(self,aus,split=None,size=225,mcManager=None):
         super().__init__()
         df = pd.read_csv(os.path.join('data/datafiles/bp4d.csv'))
-        df['path'] = df['path'].str.replace('Sampled_Images','extracted_frames')
         if split is not None:
             df = helper_split_func(df,split=split)
-        df = helper_split_func(df)
-        paths = df['path'].values
-        landmark_paths = None
+        relpaths = df['path'].values
+        landmark_paths = df['landmark_path'].values
+        paths = list(map(lambda x: os.path.join(ROOT,x),relpaths))
+        landmark_paths = list(map(lambda x: os.path.join(ROOT,x),landmark_paths))
         aus_df = helper_AU_func(df,aus)
         au_labels = aus_df[aus].to_numpy()
         labels={'aus':au_labels, 'dataset':'BP4D' }
@@ -83,13 +83,14 @@ class DISFA(FacesBase):
     def __init__(self,aus,split=None,size=225,mcManager=None):
         super().__init__()
         df = pd.read_csv(os.path.join('data/datafiles/disfa.csv'))
-        df['path'] = df['path'].str.replace('Sampled_Images','extracted_frames')
         if split is not None:
             df = helper_split_func(df,split=split)
-        paths = df['path'].values
-        landmark_paths = None
+        relpaths = df['path'].values
+        landmark_paths = df['landmark_path'].values
+        paths = list(map(lambda x: os.path.join(ROOT,x),relpaths))
+        landmark_paths = list(map(lambda x: os.path.join(ROOT,x),landmark_paths))
         aus_df = helper_AU_func(df,aus)
-        au_labels = aus_df[aus].to_numpy()
+        au_labels = aus_df[aus].to_numpy() 
         labels={'aus':au_labels, 'dataset':'DISFA' }
         self.data = ImagePaths(paths,landmark_paths,aus,labels,size,mcManager)
 
@@ -98,11 +99,12 @@ class UNBC(FacesBase):
     def __init__(self,aus,split=None,size=225,mcManager=None):
         super().__init__()
         df = pd.read_csv(os.path.join('data/datafiles/unbc.csv'))
-        df['path'] = df['path'].str.replace('Sampled_Images','extracted_frames')
         if split is not None:
             df = helper_split_func(df,split=split)
-        paths = df['path'].values
-        landmark_paths = None
+        relpaths = df['path'].values    
+        landmark_paths = df['landmark_path'].values
+        paths = list(map(lambda x: os.path.join(ROOT,x),relpaths))
+        landmark_paths = list(map(lambda x: os.path.join(ROOT,x),landmark_paths))
         aus_df = helper_AU_func(df,aus)
         au_labels = aus_df[aus].to_numpy()
         labels={'aus':au_labels, 'dataset':'UNBC' }

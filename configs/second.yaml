@@ -34,6 +34,7 @@ data:
         mcManager: False
 
 lightning:
+  logger: neptune
   trainer:
     max_epochs: 4
     benchmark: True
