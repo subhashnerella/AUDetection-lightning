@@ -14,7 +14,7 @@ import lightning
 import lightning.pytorch as pl
 from lightning import seed_everything
 from lightning.pytorch import Trainer
-from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.loggers import TensorBoardLogger,NeptuneLogger
 
 import neptune
 from neptune import Run
@@ -148,17 +148,18 @@ def main():
             logdir = opt.resume.rstrip("/")
             ckpt = os.path.join(logdir, "checkpoints", "last.ckpt")
 
-        opt.resume_from_checkpoint = ckpt
         base_configs = sorted(glob.glob(os.path.join(logdir, "configs/*.yaml")))
         opt.base = base_configs + opt.base
         _tmp = logdir.split("/")
         nowname = _tmp[-1]
+        now = nowname.split("_")[0]
     else:
         cfg_fname = os.path.split(opt.base[0])[-1]
         cfg_name = cfg_fname.split('.')[0]
         name = "_"+cfg_name
         nowname = now + name 
-        logdir = os.path.join(opt.logdir, nowname)   
+        logdir = os.path.join(opt.logdir, nowname)
+        ckpt = None   
     
     ckptdir = os.path.join(logdir, "checkpoints")
     cfgdir = os.path.join(logdir, "configs")
@@ -222,10 +223,7 @@ def main():
         trainer_kwargs["callbacks"] = [instantiate_from_config(callbacks_cfg[k]) for k in callbacks_cfg]
 
         #############################################################################################
-        run = None
-        if lightning_config.logger == "neptune" and opt.resume:
-            id = lightning_config.logger_id
-            run = Run(project='AUdetection',name=nowname,with_id=id,api_token=os.getenv('NEPTUNE_API_KEY'))
+
         
         default_logger_cfgs = {
                         "tensorboard": {
@@ -248,22 +246,28 @@ def main():
                                         "api_key": os.getenv('NEPTUNE_API_KEY'),
                                         "project": 'AUdetection',
                                         "name": nowname,
-                                        "run":run,
                                         "log_model_checkpoints":False,
                         }}
                         
         }
 
-        default_logger_cfg = default_logger_cfgs[lightning_config.logger]
-        logger_cfg = OmegaConf.create()
-        logger_cfg = OmegaConf.merge(default_logger_cfg, logger_cfg)
-        logger = instantiate_from_config(logger_cfg)
+
+        if lightning_config.logger == "neptune" and opt.resume:
+            id = lightning_config.logger_id
+            run = Run(project='AUdetection',name=nowname,with_id=id,api_token=os.getenv('NEPTUNE_API_KEY'))
+            logger = NeptuneLogger(run=run)
+        else:
+            default_logger_cfg = default_logger_cfgs[lightning_config.logger]
+            logger_cfg = OmegaConf.create()
+            logger_cfg = OmegaConf.merge(default_logger_cfg, logger_cfg)
+            logger = instantiate_from_config(logger_cfg)
+        
         trainer_kwargs["logger"] = logger
 
         #############################################################################################
 
         trainer = Trainer(**trainer_config, **trainer_kwargs)
-        trainer.fit(model, data)
+        trainer.fit(model, data,ckpt_path=ckpt)
 
         trainer.test(datamodule=data,ckpt_path=trainer.checkpoint_callback.best_model_path)
 

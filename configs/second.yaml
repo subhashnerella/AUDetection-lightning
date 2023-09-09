@@ -27,10 +27,11 @@ data:
         size: 224
         mcManager: True
     test:
-      target: data.dataset.ICUTest
+      target: data.dataset.ICU
       params:
         aus: ['AU1', 'AU2', 'AU4', 'AU6', 'AU7', 'AU9', 'AU10','AU12', 'AU14', 'AU15', 'AU17','AU20', 'AU23', 'AU24', 'AU25','AU26','AU27','AU43']
         size: 224
+        split: test
         mcManager: False
 
 lightning:
