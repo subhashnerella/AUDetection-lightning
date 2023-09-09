@@ -1,12 +1,19 @@
 import datetime
 import argparse
 import os
-
+import glob
+from omegaconf import OmegaConf
 from main import instantiate_from_config, DataConfig
 
 import lightning.pytorch as pl
 from lightning import seed_everything
 from lightning.pytorch import Trainer
+from lightning.pytorch.loggers import NeptuneLogger
+
+import neptune
+from neptune import Run 
+
+from callbacks import MetricLogger,CUDACallback
 
 def arg_parser():
     parser = argparse.ArgumentParser('SWIN: AU detector test',add_help=False)
@@ -15,13 +22,6 @@ def arg_parser():
         "--checkpoint",
         type=str,
     )
-    parser.add_argument(
-        "-b",
-        "-base",
-        type=str,
-        default="configs/test.yaml",
-    )
-    parser.add_argument()
     return parser
 
 def main():
@@ -31,15 +31,36 @@ def main():
 
     if not os.path.exists(opt.checkpoint):
         raise ValueError("Cannot find {}".format(opt.resume))
-    if os.path.isfile(opt.resume):
+    if os.path.isfile(opt.checkpoint):
         paths = opt.checkpoint.split("/")
         logdir = "/".join(paths[:-2])
         ckpt = opt.checkpoint
     else:
         assert os.path.isdir(opt.checkpoint), opt.checkpoint
         logdir = opt.checkpoint.rstrip("/")
-        ckpt = os.path.join(logdir, "checkpoints", "last.ckpt")
+        ckpt = os.path.join(logdir, "checkpoints", "epoch=000000.ckpt")
+    nowname = logdir.split("/")[-1]
 
-    ckptdir = os.path.join(logdir, "checkpoints")
+    config_files = sorted(glob.glob(os.path.join(logdir, "configs/*.yaml")))
+    configs = [OmegaConf.load(f) for f in config_files]
+    config = OmegaConf.merge(*configs)
 
-  
+    model = instantiate_from_config(config.model)
+    data = instantiate_from_config(config.data)
+
+    trainer_config = {'accelerator':'gpu',
+                      'devices':1,
+                      'strategy':'ddp',}
+
+    id = config.lightning.logger_id
+    run = Run(project='AUdetection',name=nowname,with_id=id,api_token=os.getenv('NEPTUNE_API_KEY'))
+    logger = NeptuneLogger(run=run,prefix="testing")
+
+    locallogger = MetricLogger(logdir=logdir)
+    cuda_callback = CUDACallback()
+
+    trainer = Trainer(logger=logger,callbacks=[locallogger,cuda_callback],**trainer_config)
+    trainer.test(model=model,datamodule=data,ckpt_path=ckpt)
+
+if __name__ == "__main__":
+    main()
