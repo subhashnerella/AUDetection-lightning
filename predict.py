@@ -1,110 +1,77 @@
-from main import DataConfig
-from main import instantiate_from_config
+import datetime
 import argparse
-from omegaconf import OmegaConf
-from lightning.pytorch import Trainer
-import glob
-from data.base import ImagePaths
-import torch
-from einops import rearrange
-import numpy as np
 import os
-import pandas as pd
+import glob
+from omegaconf import OmegaConf
+from main import instantiate_from_config
+
+import lightning.pytorch as pl
+from lightning import seed_everything
+from lightning.pytorch import Trainer
+from lightning.pytorch.loggers import NeptuneLogger
+
+import neptune
+from neptune import Run 
+from callbacks import CUDACallback,PredictLogger
+
+from data.dataset import ICUPred
+
+from torch.utils.data import DataLoader
+
 
 def arg_parser():
     parser = argparse.ArgumentParser('CNN: AU detector', add_help=False)
 
+    parser = argparse.ArgumentParser('SWIN: AU detector test',add_help=False)
     parser.add_argument(
-                        "-b",
-                        "--base",
-                        nargs="*",
-                        metavar="base_config.yaml",
-                        help="paths to base configs. Loaded from left-to-right. "
-                            "Parameters can be overwritten or added with command-line options of the form `--key value`.",
-                        default=list(),
-                        )
+        "-c",
+        "--checkpoint",
+        type=str,
+    )
     return parser
 
 
 def main():
     parser = arg_parser()
     opt = parser.parse_args()
+    seed_everything(42)
 
-    configs = [OmegaConf.load(base) for base in opt.base]
+    if not os.path.exists(opt.checkpoint):
+        raise ValueError("Cannot find {}".format(opt.resume))
+    if os.path.isfile(opt.checkpoint):
+        paths = opt.checkpoint.split("/")
+        logdir = "/".join(paths[:-2])
+        ckpt = opt.checkpoint
+    else:
+        assert os.path.isdir(opt.checkpoint), opt.checkpoint
+        logdir = opt.checkpoint.rstrip("/")
+        ckpt = os.path.join(logdir, "checkpoints", "epoch=000000.ckpt")
+    nowname = logdir.split("/")[-1]
+
+    config_files = sorted(glob.glob(os.path.join(logdir, "configs/*.yaml")))
+    configs = [OmegaConf.load(f) for f in config_files]
     config = OmegaConf.merge(*configs)
 
+
     model = instantiate_from_config(config.model)
-    model.eval()
-    model.cuda()
+
+    dataset = ICUPred(imgspath='',size=224)
+    dataloader = DataLoader(dataset,batch_size=32,shuffle=False,num_workers=4)
 
 
-    data_sources = ['/data/datasets/I2CU_processedFaceVideos/', '/data/datasets/PAIN_processedFaceVideos/']
-    aus = ['AU1', 'AU2', 'AU4', 'AU6', 'AU7', 'AU9', 'AU10','AU12', 'AU14', 'AU15', 'AU17','AU20', 'AU23', 'AU24', 'AU25','AU26','AU27','AU43']
-    size = 224
-    file_paths = []
-    for data_source in data_sources:
-        paths = glob.glob(data_source+'*/*/extracted_frames/*.jpg')
-        file_paths.extend(paths)
-
-    save_file ='inference/ICU_AUs.csv'
-    if os.path.exists(save_file):
-        df = pd.read_csv(save_file)
-    else:
-        df = pd.DataFrame(columns=['patient','video','frame','file_path']+aus)
-
-    if len(df)>0:
-        lastrunfile = df['file_path'].values[-1]
-        ind = file_paths.index(lastrunfile)
-        file_paths = file_paths[ind+1:]
-    file_paths = list(set(file_paths) - set(df['file_path'].values))
-    #yeilds chunk of 30 images, drop images that fail the detector
-    data = ImagePaths(file_paths,landmark_paths=None,aus=aus,size=size)
+    trainer_config = {'accelerator':'gpu',
+                      'devices':1,}
     
-    length = len(file_paths)
+    id = config.lightning.logger_id
+    run = Run(project='AUdetection',name=nowname,with_id=id,api_token=os.getenv('NEPTUNE_API_KEY'))
+    logger = NeptuneLogger(run=run,prefix="testing")
 
-    images = []
-    paths = []
-    try:
-        for i in range(0,length):
-            if i%10000 == 0:
-                print(i)
-                df.to_csv(save_file,index=False)
-            out = data.__getitem__(i)
-            if out['image'] is not None:
-                images.append(out["image"])
-                paths.append(out["file_path_"])
-            if len(images) == 30 or i == length-1:
-                images = torch.Tensor(np.stack(images,axis=0))
-                images = rearrange(images, 'b h w c -> b c h w')
-                #move to gpu
-                images = images.to(memory_format=torch.contiguous_format).float()
-                images = images.cuda()
-                out = model(images).sigmoid()
-                out = out.cpu().detach().numpy()
-                out = np.around(out,decimals=2)
-                patients = [path.split('/')[-4] for path in paths]
-                videos = [path.split('/')[-3] for path in paths]
-                frames = [path.split('/')[-1].split('.')[0] for path in paths]
-                out = np.concatenate([np.array(patients)[:,None],np.array(videos)[:,None],np.array(frames)[:,None],np.array(paths)[:,None],out],axis=1)
-                out = pd.DataFrame(out,columns=['patient','video','frame','file_path']+aus)
-                df = pd.concat([df,out],axis=0)
-                images = []
-                paths = []
-    except Exception as e:
-        
-        print(e)
-        print('Error occured at index',i)
-    finally:
-        df.to_csv(save_file,index=False)
+    locallogger = PredictLogger(logdir=logdir)
+
+    trainer = Trainer(logger=logger,callbacks=[locallogger],**trainer_config)
+    trainer.predict(model = model, dataloaders = dataloader, ckpt_path = ckpt)
 
 
-
-    #paths = 
-    
-    # data = instantiate_from_config(config.data)
-
-    # trainer = Trainer(**config.trainer)
-    # trainer.predict(model, data)
 
 if __name__ == '__main__':
     main()

@@ -1,5 +1,6 @@
 import time
 import json
+from typing import Any
 from omegaconf import OmegaConf
 
 from lightning.pytorch.core import LightningModule
@@ -18,6 +19,43 @@ from collections import defaultdict
 from sklearn.metrics import classification_report
 from functools import partial
 import os
+
+
+class PredictLogger(Callback):
+    def __init__(self,logdir):
+        super().__init__()
+        self.logdir = logdir
+        self.probs = []
+        self.preds = []
+        self.paths = []
+    
+    def on_predict_batch_end(self, trainer: Trainer, pl_module: LightningModule, outputs: Any, batch: Any, batch_idx: int, dataloader_idx: int = 0) -> None:
+        probs = outputs.sigmoid()
+        probs = probs.detach().cpu().numpy()
+        self.probs.extend(probs)
+
+        preds = np.where(probs > 0.5, 1, 0)
+        self.train_preds.extend(preds)
+
+        paths = batch['path']
+        self.paths.extend(paths)
+    
+    def reset(self):
+        self.probs = [];self.preds = []; self.paths = []
+
+    def on_predict_epoch_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
+        df_probs = pd.DataFrame(data = np.concat((self.paths,self.probs),axis=1), columns = ['path']+pl_module.AUs).sort_values(by=['path'])
+        df_probs.to_csv(os.path.join(self.logdir,'Predcition_probs.csv'),index=False)
+        
+        df_preds = pd.DataFrame(data = np.concat((self.paths,self.preds),axis=1), columns = ['path']+pl_module.AUs).sort_values(by=['path'])
+        df_preds.to_csv(os.path.join(self.logdir,'Predcition_preds.csv'),index=False)
+        self.reset()
+        
+        
+    def on_predict_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
+        pl_module.logger.experiment[f'prediction/probs'].upload(os.path.join(self.logdir,'probs.csv'))
+        pl_module.logger.experiment[f'prediction/preds'].upload(os.path.join(self.logdir,'preds.csv'))
+
 
 class MetricLogger(Callback):
     def __init__(self,logdir):

@@ -3,6 +3,8 @@ from torch.utils.data import Dataset
 import pandas as pd
 from data.base import ImagePaths, ConcatDatasetWithIndex
 import numpy as np
+import glob
+from PIL import Image
 
 #ROOT = "/blue/parisa.rashidi/subhashnerella/Datasets/"
 ROOT = '/data/datasets/users/subhash/'
@@ -32,7 +34,7 @@ class ICUTrainOLD(FacesBase):
         aus_df = helper_AU_func(df,aus)
         au_labels = aus_df[aus].to_numpy()
         labels={'aus':au_labels,'dataset':'ICUOLD' }
-        self.data = ImagePaths(paths,landmark_paths,aus,labels,size,mcManager)
+        self.data = ImagePaths(paths,aus,landmark_paths,labels,size,mcManager)
 
 class ICUValOLD(FacesBase):
     def __init__(self,aus,size=225, mcManager=None):
@@ -45,7 +47,7 @@ class ICUValOLD(FacesBase):
         aus_df = helper_AU_func(df,aus)
         au_labels = aus_df[aus].to_numpy()
         labels={'aus':au_labels,'dataset':'ICUOLD' }
-        self.data = ImagePaths(paths,landmark_paths,aus,labels,size,mcManager)
+        self.data = ImagePaths(paths,aus,landmark_paths,labels,size,mcManager)
 
 # ICU##############################################################################################
 class ICU(FacesBase):
@@ -60,7 +62,26 @@ class ICU(FacesBase):
         aus_df = helper_AU_func(df,aus)
         au_labels = aus_df[aus].to_numpy()
         labels={'aus':au_labels,'dataset':'ICU' }
-        self.data = ImagePaths(paths,landmark_paths,aus,labels,size,mcManager)
+        self.data = ImagePaths(paths,aus,landmark_paths,labels,size,mcManager)
+
+
+class ICUPred(Dataset):
+    def __init__(self,imgspath,size=225):
+        super().__init__()
+        self.paths = glob.glob(imgspath)
+        self.size = size
+    def __len__(self):
+        return len(self.paths)
+    def __getitem__(self, index):
+        path = self.paths[index]
+        image = Image.open(path)
+        image = image.resize((self.size,self.size))
+        image = np.array(image)
+        image = (image/127.5 - 1.0).astype(np.float32)
+        sample = {'image':image,'path':path}
+        return sample
+        
+    
 
 # BP4D##############################################################################################
 class BP4D(FacesBase):
@@ -76,7 +97,7 @@ class BP4D(FacesBase):
         aus_df = helper_AU_func(df,aus)
         au_labels = aus_df[aus].to_numpy()
         labels={'aus':au_labels, 'dataset':'BP4D' }
-        self.data = ImagePaths(paths,landmark_paths,aus,labels,size,mcManager)
+        self.data = ImagePaths(paths,aus,landmark_paths,labels,size,mcManager)
 
 # DISFA##############################################################################################
 class DISFA(FacesBase):
@@ -92,7 +113,7 @@ class DISFA(FacesBase):
         aus_df = helper_AU_func(df,aus)
         au_labels = aus_df[aus].to_numpy() 
         labels={'aus':au_labels, 'dataset':'DISFA' }
-        self.data = ImagePaths(paths,landmark_paths,aus,labels,size,mcManager)
+        self.data = ImagePaths(paths,aus,landmark_paths,labels,size,mcManager)
 
 # UNBC##############################################################################################
 class UNBC(FacesBase):
@@ -108,7 +129,7 @@ class UNBC(FacesBase):
         aus_df = helper_AU_func(df,aus)
         au_labels = aus_df[aus].to_numpy()
         labels={'aus':au_labels, 'dataset':'UNBC' }
-        self.data = ImagePaths(paths,landmark_paths,aus,labels,size,mcManager)
+        self.data = ImagePaths(paths,aus,landmark_paths,labels,size,mcManager)
 
 
 # MultiDataset##############################################################################################
