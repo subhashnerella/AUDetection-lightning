@@ -37,7 +37,7 @@ data:
 lightning:
   logger: neptune
   trainer:
-    max_epochs: 4
+    max_epochs: 5
     benchmark: True
     strategy: ddp
     accelerator: gpu
