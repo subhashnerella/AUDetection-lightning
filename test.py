@@ -22,12 +22,19 @@ def arg_parser():
         "--checkpoint",
         type=str,
     )
+    parser.add_argument(
+                    "-s",
+                    "--seed",
+                    type=int,
+                    default=23,
+                    help="seed for seed_everything",
+                    )  
     return parser
 
 def main():
     parser = arg_parser()
     opt = parser.parse_args()
-    seed_everything(42)
+    seed_everything(opt.seed)
 
     if not os.path.exists(opt.checkpoint):
         raise ValueError("Cannot find {}".format(opt.resume))
