@@ -20,7 +20,6 @@ from torch.utils.data import DataLoader
 
 
 def arg_parser():
-    parser = argparse.ArgumentParser('CNN: AU detector', add_help=False)
 
     parser = argparse.ArgumentParser('SWIN: AU detector test',add_help=False)
     parser.add_argument(
@@ -35,6 +34,12 @@ def arg_parser():
                     default=23,
                     help="seed for seed_everything",
                     )  
+    parser.add_argument(
+                    "-p",
+                    "--data_path",
+                    type=str,
+                    required=True,
+                    )
     return parser
 
 
@@ -52,7 +57,7 @@ def main():
     else:
         assert os.path.isdir(opt.checkpoint), opt.checkpoint
         logdir = opt.checkpoint.rstrip("/")
-        ckpt = os.path.join(logdir, "checkpoints", "epoch=000000.ckpt")
+        ckpt = os.path.join(logdir, "checkpoints", "epoch=000001.ckpt")
     nowname = logdir.split("/")[-1]
 
     config_files = sorted(glob.glob(os.path.join(logdir, "configs/*.yaml")))
@@ -62,8 +67,8 @@ def main():
 
     model = instantiate_from_config(config.model)
 
-    dataset = ICUPred(imgspath='',size=224)
-    dataloader = DataLoader(dataset,batch_size=32,shuffle=False,num_workers=4)
+    dataset = ICUPred(imgspath=opt.data_path,size=224)
+    dataloader = DataLoader(dataset,batch_size=128,shuffle=False,num_workers=4)
 
 
     trainer_config = {'accelerator':'gpu',

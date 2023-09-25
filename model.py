@@ -68,8 +68,6 @@ class SwinModel(LightningModule):
     
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
         x = batch['image']
-        if not x:
-            return None
         if len(x.shape) == 3:
             x = x[..., None]
         x = rearrange(x, 'b h w c -> b c h w')
