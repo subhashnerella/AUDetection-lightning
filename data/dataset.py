@@ -66,9 +66,11 @@ class ICU(FacesBase):
 
 
 class ICUPred(Dataset):
-    def __init__(self,imgspath,size=225):
+    def __init__(self,imgspaths,size=225):
         super().__init__()
-        self.paths = glob.glob(imgspath)
+        self.paths = []
+        for imgspath in imgspaths:
+            self.paths += glob.glob(imgspath)
         self.size = size
     def __len__(self):
         return len(self.paths)
