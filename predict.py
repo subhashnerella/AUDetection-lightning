@@ -38,6 +38,7 @@ def arg_parser():
                     "-p",
                     "--data_path",
                     type=str,
+                    nargs='+',
                     required=True,
                     )
     return parser
@@ -67,8 +68,8 @@ def main():
 
     model = instantiate_from_config(config.model)
 
-    dataset = ICUPred(imgspath=opt.data_path,size=224)
-    dataloader = DataLoader(dataset,batch_size=128,shuffle=False,num_workers=4)
+    dataset = ICUPred(imgspaths=opt.data_path,size=224)
+    dataloader = DataLoader(dataset,batch_size=200,shuffle=False,num_workers=4)
 
 
     trainer_config = {'accelerator':'gpu',
