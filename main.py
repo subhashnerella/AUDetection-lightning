@@ -191,6 +191,15 @@ def main():
             }
         }
 
+        early_stopping_cfg = {
+            "target": "lightning.pytorch.callbacks.EarlyStopping",
+            "params": {
+                "monitor": "val/loss",
+                "patience": 3,
+                "mode": "min",
+            }
+        }
+
         #############################################################################################
 
         default_callbacks_cfg = {
@@ -218,6 +227,7 @@ def main():
             }
         }
         default_callbacks_cfg.update({'checkpoint_callback': default_modelckpt_cfg})
+        default_callbacks_cfg.update({'early_stopping': early_stopping_cfg})
         callbacks_cfg = OmegaConf.create()
         callbacks_cfg = OmegaConf.merge(default_callbacks_cfg, callbacks_cfg)
         trainer_kwargs["callbacks"] = [instantiate_from_config(callbacks_cfg[k]) for k in callbacks_cfg]
