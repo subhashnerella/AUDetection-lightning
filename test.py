@@ -4,6 +4,7 @@ import os
 import glob
 from omegaconf import OmegaConf
 from main import instantiate_from_config, DataConfig
+from dotenv import load_dotenv
 
 import lightning.pytorch as pl
 from lightning import seed_everything
@@ -45,7 +46,7 @@ def main():
     else:
         assert os.path.isdir(opt.checkpoint), opt.checkpoint
         logdir = opt.checkpoint.rstrip("/")
-        ckpt = os.path.join(logdir, "checkpoints", "epoch=000000.ckpt")
+        ckpt = os.path.join(logdir, "checkpoints", "bestsofar.ckpt")
     nowname = logdir.split("/")[-1]
 
     config_files = sorted(glob.glob(os.path.join(logdir, "configs/*.yaml")))
@@ -70,4 +71,5 @@ def main():
     trainer.test(model=model,datamodule=data,ckpt_path=ckpt)
 
 if __name__ == "__main__":
+    load_dotenv()
     main()

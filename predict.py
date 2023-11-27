@@ -58,7 +58,7 @@ def main():
     else:
         assert os.path.isdir(opt.checkpoint), opt.checkpoint
         logdir = opt.checkpoint.rstrip("/")
-        ckpt = os.path.join(logdir, "checkpoints", "epoch=000001.ckpt")
+        ckpt = os.path.join(logdir, "checkpoints", "bestsofar.ckpt")
     nowname = logdir.split("/")[-1]
 
     config_files = sorted(glob.glob(os.path.join(logdir, "configs/*.yaml")))

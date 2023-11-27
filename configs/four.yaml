@@ -1,0 +1,46 @@
+model:
+  target: model.swin.SwinModel
+  params: 
+    aus: ['AU1', 'AU2', 'AU4', 'AU6', 'AU7', 'AU9', 'AU10','AU12', 'AU14', 'AU15', 'AU17','AU20', 'AU23', 'AU24', 'AU25','AU26','AU27','AU43']
+    variant: base
+    lr: 0.0001
+    loss_reduction: none
+data:
+  target: main.DataConfig
+  params:
+    batch_size: 25
+    num_workers: 4
+    train:
+      target: data.dataset.MultiDataset
+      params:
+        datasets: ['BP4D', 'DISFA','UNBC','ICU','ICUOLD']
+        aus: ['AU1', 'AU2', 'AU4', 'AU6', 'AU7', 'AU9', 'AU10','AU12', 'AU14', 'AU15', 'AU17','AU20', 'AU23', 'AU24', 'AU25','AU26','AU27','AU43']
+        split: train
+        size: 224
+        mcManager: True
+    validation:
+      target: data.dataset.MultiDataset
+      params:
+        datasets: ['BP4D', 'DISFA', 'UNBC', 'ICU', 'ICUOLD']
+        aus: ['AU1', 'AU2', 'AU4', 'AU6', 'AU7', 'AU9', 'AU10','AU12', 'AU14', 'AU15', 'AU17','AU20', 'AU23', 'AU24', 'AU25','AU26','AU27','AU43']
+        split: val
+        size: 224
+        mcManager: True
+    test:
+      target: data.dataset.MultiDataset
+      params:
+        datasets: ['ICU', 'ICUOLD']
+        aus: ['AU1', 'AU2', 'AU4', 'AU6', 'AU7', 'AU9', 'AU10','AU12', 'AU14', 'AU15', 'AU17','AU20', 'AU23', 'AU24', 'AU25','AU26','AU27','AU43']
+        size: 224
+        split: test
+        mcManager: False
+
+lightning:
+  logger: neptune
+  trainer:
+    max_epochs: 10
+    benchmark: True
+    strategy: ddp
+    accelerator: gpu
+    devices: 0,1,
+
