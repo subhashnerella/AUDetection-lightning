@@ -76,8 +76,7 @@ class ImagePaths(Dataset):
             if k=='landmark_path_':
                 pass
             elif k == "dataset":
-                #sample[k] = self.keys[k]
-                pass
+                sample[k] = self.keys[k]
             else:
                 sample[k] = self.keys[k][i]
         return sample

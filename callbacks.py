@@ -79,7 +79,8 @@ class MetricLogger(Callback):
         self.test_probs = []
         self.test_labels = []
         self.test_preds = []
-
+        self.test_paths = []
+        self.test_dataset = []
         # self.dataset_AUs = {'BP4D':['AU1', 'AU2', 'AU4', 'AU6', 'AU7', 'AU9', 'AU10','AU12', 'AU14', 'AU15', 'AU17','AU20', 'AU23', 'AU24', 'AU27'],
         #                     'DISFA':['AU1', 'AU2', 'AU4', 'AU5', 'AU6', 'AU9', 'AU12', 'AU15', 'AU17', 'AU20', 'AU25', 'AU26'],
         #                     'UNBC':[ 'AU4', 'AU6', 'AU7', 'AU9', 'AU10','AU12', 'AU15', 'AU20', 'AU25','AU26','AU27','AU43'],
@@ -148,6 +149,12 @@ class MetricLogger(Callback):
 
         preds = np.where(prob > 0.5, 1, 0)
         self.test_preds.extend(preds)
+
+        paths = batch["file_path_"]
+        self.val_paths.extend(paths)
+
+        dataset = batch["dataset"]
+        self.val_dataset.extend(dataset)
 
         
     def reset(self,split='train'):
@@ -246,6 +253,15 @@ class MetricLogger(Callback):
             df_probs = pd.DataFrame(data = np.concat((val_dataset,val_paths,val_probs),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
             df_labels = pd.DataFrame(data = np.concat((val_dataset,val_paths,val_labels),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
             df_preds = pd.DataFrame(data = np.concat((val_dataset,val_paths,val_preds),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
+        elif split == 'test':
+            test_dataset = np.asarray(self.test_dataset)[:,None]
+            test_paths = np.asarray(self.test_paths)[:,None]
+            test_probs = np.asarray(self.test_probs)
+            test_labels = np.asarray(self.test_labels)
+            test_preds = np.asarray(self.test_preds)
+            df_probs = pd.DataFrame(data = np.concat((test_dataset,test_paths,test_probs),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
+            df_labels = pd.DataFrame(data = np.concat((test_dataset,test_paths,test_labels),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
+            df_preds = pd.DataFrame(data = np.concat((test_dataset,test_paths,test_preds),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
         else:
             raise ValueError(f"Split {split} not recognized.")
         epoch = str(trainer.current_epoch).zfill(3)
@@ -283,8 +299,7 @@ class MetricLogger(Callback):
     def on_test_epoch_end(self, trainer: Trainer, pl_module: pl.LightningModule) -> None:
         test_report = self.compute_step(pl_module,split='test')
         self.log_stats(trainer, test_report, split='test')
-        # if trainer.current_epoch == trainer.max_epochs-1:
-        #     self.make_dataframes(trainer,pl_module,pl_module.AUs,split='test')   
+        self.make_dataframes(trainer,pl_module,pl_module.AUs,split='test')   
         self.reset('test')
         
 

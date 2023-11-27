@@ -53,12 +53,13 @@ def main():
     configs = [OmegaConf.load(f) for f in config_files]
     config = OmegaConf.merge(*configs)
 
+
     model = instantiate_from_config(config.model)
     data = instantiate_from_config(config.data)
 
     trainer_config = {'accelerator':'gpu',
                       'devices':1,
-                      'strategy':'ddp',}
+                    }
 
     id = config.lightning.logger_id
     run = Run(project='AUdetection',name=nowname,with_id=id,api_token=os.getenv('NEPTUNE_API_KEY'))
