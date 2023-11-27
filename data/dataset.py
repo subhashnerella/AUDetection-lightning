@@ -7,7 +7,8 @@ import glob
 from PIL import Image
 
 #ROOT = "/blue/parisa.rashidi/subhashnerella/Datasets/"
-ROOT = '/data/datasets/users/subhash/'
+ROOT = os.getenv('ROOT')
+OICUROOT = os.getenv('OICUROOT')
 
 class FacesBase(Dataset):
     def __init__(self, *args, **kwargs):
@@ -24,30 +25,20 @@ class FacesBase(Dataset):
         return sample
 
 # ICUOLD##############################################################################################
-class ICUTrainOLD(FacesBase):
-    def __init__(self,aus,size=225, mcManager=None):
+class ICUold(FacesBase):
+    def __init__(self,aus,split=None, size=225, mcManager=None):
         super().__init__()
-        df = pd.read_csv(os.path.join('data/datafiles/icu_old.csv'))
-        df = helper_icu_split_func(df)
-        paths = df['path'].values
-        landmark_paths = df['landmark_path'].values
+        df = pd.read_csv(os.path.join('data/datafiles/oICU.csv'))
+        if split is not None:
+            df = helper_icu_split_func(df,split=split)
+        relpaths = df['path'].values
+        paths = list(map(lambda x: os.path.join(OICUROOT,x),relpaths))
+        landmark_paths = None
         aus_df = helper_AU_func(df,aus)
         au_labels = aus_df[aus].to_numpy()
         labels={'aus':au_labels,'dataset':'ICUOLD' }
         self.data = ImagePaths(paths,aus,landmark_paths,labels,size,mcManager)
 
-class ICUValOLD(FacesBase):
-    def __init__(self,aus,size=225, mcManager=None):
-        super().__init__()
-        df = pd.read_csv(os.path.join('data/datafiles/icu_old.csv'))
-        df['path'] = df['path']
-        df = helper_icu_split_func(df,split='val')
-        paths = df['path'].values
-        landmark_paths = df['landmark_path'].values
-        aus_df = helper_AU_func(df,aus)
-        au_labels = aus_df[aus].to_numpy()
-        labels={'aus':au_labels,'dataset':'ICUOLD' }
-        self.data = ImagePaths(paths,aus,landmark_paths,labels,size,mcManager)
 
 # ICU##############################################################################################
 class ICU(FacesBase):
@@ -141,7 +132,8 @@ class MultiDataset(Dataset):
         dataset_classes = {'BP4D': BP4D,
                            'DISFA': DISFA,
                            'UNBC': UNBC,
-                           'ICU': ICU,}
+                           'ICU': ICU,
+                           'ICUOLD': ICUold,}
         dataset = []
         for d in datasets:
             dataset.append(dataset_classes[d](aus,split,size=size,mcManager=mcManager))

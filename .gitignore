@@ -14,6 +14,7 @@ inference/
 #files
 .env
 *.txt
+*.csv
 
 # Jupyter Notebook
 .ipynb_checkpoints
