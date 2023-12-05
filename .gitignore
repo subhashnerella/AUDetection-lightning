@@ -1,6 +1,5 @@
 #folders
 logs/
-utils/
 lightning_logs/
 inference/
 
