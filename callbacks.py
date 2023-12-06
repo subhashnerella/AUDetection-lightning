@@ -153,10 +153,10 @@ class MetricLogger(Callback):
         self.test_preds.extend(preds)
 
         paths = batch["file_path_"]
-        self.val_paths.extend(paths)
+        self.test_paths.extend(paths)
 
         dataset = batch["dataset"]
-        self.val_dataset.extend(dataset)
+        self.test_dataset.extend(dataset)
 
         
     def reset(self,split='train'):
