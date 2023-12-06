@@ -138,13 +138,15 @@ class MetricLogger(Callback):
     def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx =0) -> None:
         prob = outputs['logits']
         prob = prob.sigmoid()
-        prob = pl_module.all_gather(prob)
-        prob = rearrange(prob, 'p b c -> (p b) c').detach().cpu().numpy()
+        # prob = pl_module.all_gather(prob)
+        # if len(prob.shape) == 3:
+        #     prob = rearrange(prob, 'p b c -> (p b) c').detach().cpu().numpy()
         self.test_probs.extend(prob)
 
         label = batch["aus"]
-        label = pl_module.all_gather(label)
-        label = rearrange(label, 'p b c -> (p b) c').detach().cpu().numpy()
+        # label = pl_module.all_gather(label)
+        # if len(label.shape) == 3:
+        #     label = rearrange(label, 'p b c -> (p b) c').detach().cpu().numpy()
         self.test_labels.extend(label)
 
         preds = np.where(prob > 0.5, 1, 0)
