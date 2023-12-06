@@ -47,10 +47,10 @@ class PredictLogger(Callback):
         self.probs = np.array(self.probs)
         self.preds = np.array(self.preds)
         self.paths = np.array(self.paths)
-        df_probs = pd.DataFrame(data = np.concatenate((self.paths[:,None],self.probs),axis=1), columns = ['path']+pl_module.AUs).sort_values(by=['path'])
+        df_probs = pd.DataFrame(data = np.concatenateenate((self.paths[:,None],self.probs),axis=1), columns = ['path']+pl_module.AUs).sort_values(by=['path'])
         df_probs.to_csv(os.path.join(self.logdir,'Predcition_probs.csv'),index=False)
         
-        df_preds = pd.DataFrame(data = np.concatenate((self.paths[:,None],self.preds),axis=1), columns = ['path']+pl_module.AUs).sort_values(by=['path'])
+        df_preds = pd.DataFrame(data = np.concatenateenate((self.paths[:,None],self.preds),axis=1), columns = ['path']+pl_module.AUs).sort_values(by=['path'])
         df_preds.to_csv(os.path.join(self.logdir,'Predcition_preds.csv'),index=False)
         self.reset()
         
@@ -138,15 +138,19 @@ class MetricLogger(Callback):
     def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx =0) -> None:
         prob = outputs['logits']
         prob = prob.sigmoid()
-        # prob = pl_module.all_gather(prob)
-        # if len(prob.shape) == 3:
-        #     prob = rearrange(prob, 'p b c -> (p b) c').detach().cpu().numpy()
+        prob = pl_module.all_gather(prob)
+        if len(prob.shape) == 3:
+            prob = rearrange(prob, 'p b c -> (p b) c').detach().cpu().numpy()
+        else:
+            prob = prob.detach().cpu().numpy()
         self.test_probs.extend(prob)
 
         label = batch["aus"]
-        # label = pl_module.all_gather(label)
-        # if len(label.shape) == 3:
-        #     label = rearrange(label, 'p b c -> (p b) c').detach().cpu().numpy()
+        label = pl_module.all_gather(label)
+        if len(label.shape) == 3:
+            label = rearrange(label, 'p b c -> (p b) c').detach().cpu().numpy()
+        else:
+            label = label.detach().cpu().numpy()
         self.test_labels.extend(label)
 
         preds = np.where(prob > 0.5, 1, 0)
@@ -243,27 +247,27 @@ class MetricLogger(Callback):
             train_probs = np.asarray(self.train_probs)
             train_labels = np.asarray(self.train_labels)
             train_preds = np.asarray(self.train_preds)
-            df_probs = pd.DataFrame(data = np.concat((train_dataset,train_paths,train_probs),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
-            df_labels = pd.DataFrame(data = np.concat((train_dataset,train_paths,train_labels),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
-            df_preds = pd.DataFrame(data = np.concat((train_dataset,train_paths,train_preds),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
+            df_probs = pd.DataFrame(data = np.concatenate((train_dataset,train_paths,train_probs),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
+            df_labels = pd.DataFrame(data = np.concatenate((train_dataset,train_paths,train_labels),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
+            df_preds = pd.DataFrame(data = np.concatenate((train_dataset,train_paths,train_preds),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
         elif split == 'val':
             val_dataset = np.asarray(self.val_dataset)[:,None]
             val_paths = np.asarray(self.val_paths)[:,None]
             val_probs = np.asarray(self.val_probs)
             val_labels = np.asarray(self.val_labels)
             val_preds = np.asarray(self.val_preds)
-            df_probs = pd.DataFrame(data = np.concat((val_dataset,val_paths,val_probs),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
-            df_labels = pd.DataFrame(data = np.concat((val_dataset,val_paths,val_labels),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
-            df_preds = pd.DataFrame(data = np.concat((val_dataset,val_paths,val_preds),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
+            df_probs = pd.DataFrame(data = np.concatenate((val_dataset,val_paths,val_probs),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
+            df_labels = pd.DataFrame(data = np.concatenate((val_dataset,val_paths,val_labels),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
+            df_preds = pd.DataFrame(data = np.concatenate((val_dataset,val_paths,val_preds),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
         elif split == 'test':
             test_dataset = np.asarray(self.test_dataset)[:,None]
             test_paths = np.asarray(self.test_paths)[:,None]
             test_probs = np.asarray(self.test_probs)
             test_labels = np.asarray(self.test_labels)
             test_preds = np.asarray(self.test_preds)
-            df_probs = pd.DataFrame(data = np.concat((test_dataset,test_paths,test_probs),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
-            df_labels = pd.DataFrame(data = np.concat((test_dataset,test_paths,test_labels),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
-            df_preds = pd.DataFrame(data = np.concat((test_dataset,test_paths,test_preds),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
+            df_probs = pd.DataFrame(data = np.concatenate((test_dataset,test_paths,test_probs),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
+            df_labels = pd.DataFrame(data = np.concatenate((test_dataset,test_paths,test_labels),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
+            df_preds = pd.DataFrame(data = np.concatenate((test_dataset,test_paths,test_preds),axis=1), columns = ['dataset','path']+aus).sort_values(by=['dataset','path'])
         else:
             raise ValueError(f"Split {split} not recognized.")
         epoch = str(trainer.current_epoch).zfill(3)
