@@ -47,11 +47,11 @@ class PredictLogger(Callback):
         self.probs = np.array(self.probs)
         self.preds = np.array(self.preds)
         self.paths = np.array(self.paths)
-        df_probs = pd.DataFrame(data = np.concatenateenate((self.paths[:,None],self.probs),axis=1), columns = ['path']+pl_module.AUs).sort_values(by=['path'])
-        df_probs.to_csv(os.path.join(self.logdir,'Predcition_probs.csv'),index=False)
+        df_probs = pd.DataFrame(data = np.concatenate((self.paths[:,None],self.probs),axis=1), columns = ['path']+pl_module.AUs).sort_values(by=['path'])
+        df_probs.to_csv(os.path.join(self.logdir,'Predcition_probs_Stable.csv'),index=False)
         
-        df_preds = pd.DataFrame(data = np.concatenateenate((self.paths[:,None],self.preds),axis=1), columns = ['path']+pl_module.AUs).sort_values(by=['path'])
-        df_preds.to_csv(os.path.join(self.logdir,'Predcition_preds.csv'),index=False)
+        df_preds = pd.DataFrame(data = np.concatenate((self.paths[:,None],self.preds),axis=1), columns = ['path']+pl_module.AUs).sort_values(by=['path'])
+        df_preds.to_csv(os.path.join(self.logdir,'Predcition_preds_Stable.csv'),index=False)
         self.reset()
         
         
