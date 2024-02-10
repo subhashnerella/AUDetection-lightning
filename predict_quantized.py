@@ -9,6 +9,7 @@ import lightning.pytorch as pl
 from lightning import seed_everything
 from lightning.pytorch import Trainer
 from lightning.pytorch.loggers import NeptuneLogger
+from model.swin import SwinModel
 
 import neptune
 from neptune import Run 
@@ -17,6 +18,8 @@ from callbacks import CUDACallback,PredictLogger
 from data.dataset import ICUPred
 
 from torch.utils.data import DataLoader
+import torch
+import torch.nn as nn
 
 
 def arg_parser():
@@ -67,12 +70,22 @@ def main():
 
 
     model = instantiate_from_config(config.model)
+    model.init_from_ckpt(ckpt)
+    #quantize
+
+    backend = 'qnnpack'
+    model.qconfig = torch.quantization.get_default_qconfig(backend)
+    torch.backends.quantized.engine = backend
+    quantized_model  = torch.quantization.quantize_dynamic(model, qconfig_spec={nn.Linear}, dtype=torch.qint8)
+    #scripted_quantized_model = torch.jit.script(quantized_model)
+   
+
 
     dataset = ICUPred(imgspaths=opt.data_path,size=224)
     dataloader = DataLoader(dataset,batch_size=200,shuffle=False,num_workers=4)
 
 
-    trainer_config = {'accelerator':'gpu',
+    trainer_config = {'accelerator':'cpu',
                       'devices':1,}
     
     id = config.lightning.logger_id
@@ -82,7 +95,7 @@ def main():
     locallogger = PredictLogger(logdir=logdir)
 
     trainer = Trainer(logger=logger,callbacks=[locallogger],**trainer_config)
-    trainer.predict(model = model, dataloaders = dataloader, ckpt_path = ckpt)
+    trainer.predict(model = quantized_model, dataloaders = dataloader)
 
 
 
